@@ -22,4 +22,4 @@ services:
 volumes:
   postgres_db_volume:
     external: 
-      name: movies_service_postgres_db
+      name: movies_service_postgres_db_volume
