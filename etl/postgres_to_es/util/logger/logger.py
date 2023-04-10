@@ -4,7 +4,7 @@ import logging
 class Logger:
     """Helper class for logger setup."""
 
-    def __init__(self, log_filepath: str, message_format: str = None):
+    def __init__(self, log_filepath: str = None, message_format: str = None, level: int = logging.ERROR):
         """Initialize the Logger.
 
         Args:
@@ -12,6 +12,6 @@ class Logger:
             message_format (str, optional): format of the log entry. Defaults to None.
         """
         if not message_format:
-            message_format = '%(asctime)s %(message)s'
+            message_format = '[%(levelname)s] %(asctime)s >> %(message)s'
 
-        logging.basicConfig(filename=log_filepath, format=message_format)
+        logging.basicConfig(filename=log_filepath, format=message_format, level=level)
