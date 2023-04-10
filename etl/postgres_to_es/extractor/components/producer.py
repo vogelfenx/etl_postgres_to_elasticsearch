@@ -38,8 +38,7 @@ class Producer(BaseProducer):
         """
         logging.debug('perform select_modified_entity_records_ids():\n\t%s', self.__doc__)
 
-        # SELECT last modified entity's IDS
         ids = self.db_connection.select_entity_fields(
-            entity=self.entity, fields=['id'], condition=f'modified>\'{modified_from}\'')
+            entity=self.entity, fields=['id'], condition=f"modified>'{modified_from}'")
 
         return ids
