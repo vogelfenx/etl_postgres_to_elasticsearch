@@ -1,1 +1,1 @@
-from .db_handler import PostgresConnection
+from .pg_db_handler import PostgresConnection

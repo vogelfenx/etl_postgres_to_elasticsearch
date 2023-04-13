@@ -2,9 +2,9 @@ import logging
 import os
 
 import dotenv
+from extractor import MultipleQueryExtractor
 from extractor.source_database.postgres import PostgresConnection
 from util.configuration import setup
-from extractor import MultipleQueryExtractor
 
 if __name__ == '__main__':
     setup()
@@ -25,5 +25,12 @@ if __name__ == '__main__':
 
     pg_conn = PostgresConnection(dsn=dsn_postgres, package_limit=1000)
 
-    extractor = MultipleQueryExtractor(db_connection=pg_conn)
-    extractor.extract_data(entity='person')
+    # Process when a person record has been updated
+
+    extractor = MultipleQueryExtractor(
+        db_connection=pg_conn,
+    )
+
+    collected_movies_data = extractor.extract_data()
+
+    pass
