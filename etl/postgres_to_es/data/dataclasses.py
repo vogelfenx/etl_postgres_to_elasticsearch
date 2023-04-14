@@ -10,8 +10,8 @@ class Movie:
     title: str
     description: str
     director: str = None
-    genres: Set[str] = field(default_factory=set)
-    actors_names: Set[str] = field(default_factory=set)
-    writers_names: Set[str] = field(default_factory=set)
+    genres: List[str] = field(default_factory=list)
+    actors_names: List[str] = field(default_factory=list)
+    writers_names: List[str] = field(default_factory=list)
     actors: List[dict] = field(default_factory=list)
     writers: List[dict] = field(default_factory=list)

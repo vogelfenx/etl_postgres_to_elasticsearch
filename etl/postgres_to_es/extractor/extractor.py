@@ -53,11 +53,11 @@ class BaseExtractor:
             if person_role == 'actor':
                 if person_name not in movie.actors_names:
                     movie.actors.append({'id': person_id, 'name': person_name})
-                    movie.actors_names.add(person_name)
+                    movie.actors_names.append(person_name)
             elif person_role == 'writer':
                 if person_name not in movie.writers_names:
                     movie.writers.append({'id': person_id, 'name': person_name})
-                    movie.writers_names.add(person_name)
+                    movie.writers_names.append(person_name)
             elif person_role == 'director':
                 movie.director = person_name
 
