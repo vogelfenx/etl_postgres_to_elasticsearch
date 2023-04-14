@@ -6,6 +6,7 @@ name = "pypi"
 [packages]
 python-dotenv = "*"
 psycopg2 = "*"
+elasticsearch = "*"
 
 [dev-packages]
 
