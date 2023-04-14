@@ -23,7 +23,7 @@ class BaseExtractor:
     def extract_data(self, entity, package_size) -> dict:
         """Extract all needed data for a given entity."""
 
-    def _group_data(self, film_works: Generator[DictRow, None, None]) -> dict:
+    def _group_data(self, film_works: Generator[DictRow, None, None]) -> list:
         movies = []
 
         for film_work in film_works:
@@ -51,11 +51,13 @@ class BaseExtractor:
             person_role = film_work.get('role')
 
             if person_role == 'actor':
-                movie.actors.update({'id': person_id, 'name': person_name})
-                movie.actors_names.append(person_name)
+                if person_name not in movie.actors_names:
+                    movie.actors.append({'id': person_id, 'name': person_name})
+                    movie.actors_names.add(person_name)
             elif person_role == 'writer':
-                movie.writers.update({'id': person_id, 'name': person_name})
-                movie.writers_names.append(person_name)
+                if person_name not in movie.writers_names:
+                    movie.writers.append({'id': person_id, 'name': person_name})
+                    movie.writers_names.add(person_name)
             elif person_role == 'director':
                 movie.director = person_name
 
@@ -67,7 +69,7 @@ class BaseExtractor:
 class MultipleQueryExtractor(BaseExtractor):
     """Implementation of extractor process using multiple database query strategy."""
 
-    def extract_data(self) -> dict:
+    def extract_data(self) -> list:
         """Extract data implementation."""
         logging.debug("Extract data")
 
