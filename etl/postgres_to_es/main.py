@@ -7,9 +7,11 @@ import dotenv
 from extractor import MultipleQueryExtractor
 from extractor.source_database.postgres import PostgresConnection
 from loader import ElasticsearchLoader
+from util.common.backoff import backoff
 from util.configuration import setup
 
 
+@backoff(factor=2)
 def run_etl_process():
     pg_conn = PostgresConnection(dsn=dsn_postgres, package_limit=1000)
 
@@ -18,7 +20,10 @@ def run_etl_process():
         entities_update_schema=entities_update_schema,
     )
 
-    collected_movies_data = extractor.extract_data()
+    try:
+        collected_movies_data = extractor.extract_data()
+    except Exception:
+        raise
 
     loader = ElasticsearchLoader(
         host=elasticsearch_host,
