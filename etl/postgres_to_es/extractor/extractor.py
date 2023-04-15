@@ -71,10 +71,11 @@ class BaseExtractor:
 class MultipleQueryExtractor(BaseExtractor):
     """Implementation of extractor process using multiple database query strategy."""
 
-    def __init__(self, db_connection) -> None:
+    def __init__(self, db_connection, entities_update_schema) -> None:
         self.producer = Producer(db_connection)
         self.enricher = Enricher(db_connection)
         self.merger = MovieMerger(db_connection)
+        self.entities_update_schema = entities_update_schema
         super().__init__(db_connection)
 
     def extract_data(self) -> list:
@@ -83,43 +84,12 @@ class MultipleQueryExtractor(BaseExtractor):
 
         test_datetime = datetime(1, 1, 1)  # TODO use state storage
 
-        etl_proccesses = {
-            'updateMovie': {
-                'producer': {
-                    'entity_name': 'film_work',
-                },
-                'enricher': None,
-            },
-            'updatePerson': {
-                'producer': {
-                    'entity_name': 'person',
-                },
-                'enricher': {
-                    'entity_name': 'film_work',
-                    'relation_table': 'person_film_work',
-                    'parent_key': 'film_work_id',
-                    'child_key': 'person_id',
-                },
-            },
-            'updateGenre': {
-                'producer': {
-                    'entity_name': 'genre',
-                },
-                'enricher': {
-                    'entity_name': 'film_work',
-                    'relation_table': 'genre_film_work',
-                    'parent_key': 'film_work_id',
-                    'child_key': 'genre_id',
-                },
-            },
-        }
-
         grouped_films = []
-        for _, etl_process in etl_proccesses.items():
-            producer_config = etl_process.get('producer')
-            if producer_config:
+        for _, entity_update_schema in self.entities_update_schema.items():
+            producer_schema = entity_update_schema.get('producer')
+            if producer_schema:
                 entity_ids = self.producer.extract_modified_entity_ids(
-                    entity=producer_config['entity_name'],
+                    entity=producer_schema['entity_name'],
                     modified_from_timestamp=test_datetime,
                 )
                 try:
@@ -129,11 +99,11 @@ class MultipleQueryExtractor(BaseExtractor):
                     break
                 entity_ids = (field.get('id') for field in entity_ids)
 
-            enricher_config = etl_process.get('enricher')
-            if enricher_config:
+            enricher_schema = entity_update_schema.get('enricher')
+            if enricher_schema:
                 entity_ids = self.enricher.extract_child_entity_ids(
                     parent_entity_ids=entity_ids,
-                    entity_parameters=enricher_config,
+                    entity_parameters=enricher_schema,
                 )
                 entity_ids = (field.get('id') for field in entity_ids)
 

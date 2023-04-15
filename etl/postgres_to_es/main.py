@@ -10,14 +10,31 @@ from loader import ElasticsearchLoader
 from util.configuration import setup
 
 
+def run_etl_process():
+    pg_conn = PostgresConnection(dsn=dsn_postgres, package_limit=1000)
+
+    extractor = MultipleQueryExtractor(
+        db_connection=pg_conn,
+        entities_update_schema=entities_update_schema,
+    )
+
+    collected_movies_data = extractor.extract_data()
+
+    loader = ElasticsearchLoader(
+        host=elasticsearch_host,
+        index_name=elasticsearch_index_schema['index_name'],
+        index_settings=elasticsearch_index_schema['index_settings'],
+    )
+
+    loader.load_data(documents=collected_movies_data)
+
+
 if __name__ == '__main__':
     setup()
     dotenv.load_dotenv()
 
-    # test logging
     logging.debug('%s', 'start etl process')
 
-    # test connection
     dsn_postgres = {
         'dbname': os.getenv('PG_DB_NAME'),
         'user': os.getenv('PG_USER'),
@@ -33,26 +50,41 @@ if __name__ == '__main__':
         'port': int(os.getenv('ELASTICSEARCH_PORT')),
     }
 
-    with open('loader/elasticsearch/settings/movies_schema.json') as file:
-        es_index = {
+    with open('loader/elasticsearch/settings/movies_schema.json') as elasticsearch_index_schema:
+        elasticsearch_index_schema = {
             'index_name': 'movies',
-            'index_settings': json.load(file),
+            'index_settings': json.load(elasticsearch_index_schema),
         }
 
-    pg_conn = PostgresConnection(dsn=dsn_postgres, package_limit=1000)
+    entities_update_schema = {
+        'updateMovie': {
+            'producer': {
+                'entity_name': 'film_work',
+            },
+            'enricher': None,
+        },
+        'updatePerson': {
+            'producer': {
+                'entity_name': 'person',
+            },
+            'enricher': {
+                'entity_name': 'film_work',
+                'relation_table': 'person_film_work',
+                'parent_key': 'film_work_id',
+                'child_key': 'person_id',
+            },
+        },
+        'updateGenre': {
+            'producer': {
+                'entity_name': 'genre',
+            },
+            'enricher': {
+                'entity_name': 'film_work',
+                'relation_table': 'genre_film_work',
+                'parent_key': 'film_work_id',
+                'child_key': 'genre_id',
+            },
+        },
+    }
 
-    # Process when a person record has been updated
-
-    extractor = MultipleQueryExtractor(
-        db_connection=pg_conn,
-    )
-
-    collected_movies_data = extractor.extract_data()
-
-    es_loader = ElasticsearchLoader(
-        host=elasticsearch_host,
-        index_name=es_index['index_name'],
-        index_settings=es_index['index_settings'],
-    )
-
-    es_loader.load_data(documents=collected_movies_data)
+    run_etl_process()
