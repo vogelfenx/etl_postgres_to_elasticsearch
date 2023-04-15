@@ -1,10 +1,14 @@
+import json
 import logging
 import os
 
 import dotenv
+
 from extractor import MultipleQueryExtractor
 from extractor.source_database.postgres import PostgresConnection
+from loader import ElasticsearchLoader
 from util.configuration import setup
+
 
 if __name__ == '__main__':
     setup()
@@ -23,6 +27,18 @@ if __name__ == '__main__':
         'options': '-c search_path=content',
     }
 
+    elasticsearch_host = {
+        'scheme': 'http',
+        'host': os.getenv('ELASTICSEARCH_HOST'),
+        'port': int(os.getenv('ELASTICSEARCH_PORT')),
+    }
+
+    with open('loader/elasticsearch/settings/movies_schema.json') as file:
+        es_index = {
+            'index_name': 'movies',
+            'index_settings': json.load(file),
+        }
+
     pg_conn = PostgresConnection(dsn=dsn_postgres, package_limit=1000)
 
     # Process when a person record has been updated
@@ -33,4 +49,10 @@ if __name__ == '__main__':
 
     collected_movies_data = extractor.extract_data()
 
-    pass
+    es_loader = ElasticsearchLoader(
+        host=elasticsearch_host,
+        index_name=es_index['index_name'],
+        index_settings=es_index['index_settings'],
+    )
+
+    es_loader.load_data(documents=collected_movies_data)

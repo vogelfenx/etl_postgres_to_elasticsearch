@@ -14,7 +14,7 @@ class BaseEnricher(ABC):
         """Extract all related entity IDs that match the given m2m entity IDs."""
 
 
-class PersonEnricher(BaseEnricher):
+class Enricher(BaseEnricher):
 
     # За всеми фильмами и сериалами, в которых приняли участие выбранные люди.
 
@@ -25,13 +25,15 @@ class PersonEnricher(BaseEnricher):
     # ORDER BY fw.modified
     # LIMIT 100;
 
-    def extract_child_entity_ids(self, *, relation_entity_ids) -> list:
+    def extract_child_entity_ids(
+            self,
+            *,
+            parent_entity_ids,
+            entity_parameters,
+    ) -> list:
         child_entity_ids = self.db_connection.select_related_entity_ids(
-            select_entity='film_work',
-            relation_table='person_film_work',
-            parent_key='film_work_id',
-            child_key='person_id',
-            relation_entity_ids=relation_entity_ids,
+            **entity_parameters,
+            parent_entity_ids=parent_entity_ids,
         )
 
         return child_entity_ids

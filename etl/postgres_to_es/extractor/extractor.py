@@ -1,4 +1,5 @@
 
+import itertools
 import logging
 from abc import abstractmethod
 from datetime import datetime
@@ -6,10 +7,11 @@ from typing import Generator
 
 from psycopg2.extras import DictRow
 
-from .components.enricher import PersonEnricher
-from .components.merger import PersonMerger
-from .components.producer import PersonProducer
 from data.dataclasses import Movie
+
+from .components.enricher import Enricher
+from .components.merger import MovieMerger
+from .components.producer import Producer
 
 
 class BaseExtractor:
@@ -69,47 +71,76 @@ class BaseExtractor:
 class MultipleQueryExtractor(BaseExtractor):
     """Implementation of extractor process using multiple database query strategy."""
 
+    def __init__(self, db_connection) -> None:
+        self.producer = Producer(db_connection)
+        self.enricher = Enricher(db_connection)
+        self.merger = MovieMerger(db_connection)
+        super().__init__(db_connection)
+
     def extract_data(self) -> list:
         """Extract data implementation."""
         logging.debug("Extract data")
 
-        test_datetime = datetime(2023, 4, 10)  # TODO use state storage
+        test_datetime = datetime(1, 1, 1)  # TODO use state storage
 
         etl_proccesses = {
-            'updatePerson': {
-                'producer': PersonProducer,
-                'enricher': PersonEnricher,
-                'merger': PersonMerger,
+            'updateMovie': {
+                'producer': {
+                    'entity_name': 'film_work',
+                },
+                'enricher': None,
             },
-            # 'updateGenre': {},
-            # 'updateMovie': {},
+            'updatePerson': {
+                'producer': {
+                    'entity_name': 'person',
+                },
+                'enricher': {
+                    'entity_name': 'film_work',
+                    'relation_table': 'person_film_work',
+                    'parent_key': 'film_work_id',
+                    'child_key': 'person_id',
+                },
+            },
+            'updateGenre': {
+                'producer': {
+                    'entity_name': 'genre',
+                },
+                'enricher': {
+                    'entity_name': 'film_work',
+                    'relation_table': 'genre_film_work',
+                    'parent_key': 'film_work_id',
+                    'child_key': 'genre_id',
+                },
+            },
         }
 
+        grouped_films = []
         for _, etl_process in etl_proccesses.items():
-            producer = etl_process.get('producer')(db_connection=self.db_connection)
-            enricher = etl_process.get('enricher')(db_connection=self.db_connection)
-            merger = etl_process.get('merger')(db_connection=self.db_connection)
+            producer_config = etl_process.get('producer')
+            if producer_config:
+                entity_ids = self.producer.extract_modified_entity_ids(
+                    entity=producer_config['entity_name'],
+                    modified_from_timestamp=test_datetime,
+                )
+                try:
+                    first_value = next(entity_ids)
+                    entity_ids = itertools.chain([first_value], entity_ids)
+                except StopIteration:
+                    break
+                entity_ids = (field.get('id') for field in entity_ids)
 
-            producer_entity_ids = producer.extract_last_modified_entity_ids(
-                modified_from_timestamp=test_datetime,
+            enricher_config = etl_process.get('enricher')
+            if enricher_config:
+                entity_ids = self.enricher.extract_child_entity_ids(
+                    parent_entity_ids=entity_ids,
+                    entity_parameters=enricher_config,
+                )
+                entity_ids = (field.get('id') for field in entity_ids)
+
+            film_work_rows = self.merger.aggregate_film_work_related_fields(
+                entity_ids=entity_ids,
             )
 
-            producer_entity_ids = (field.get('id') for field in producer_entity_ids)
-
-            enricher_entity_ids = enricher.extract_child_entity_ids(
-                relation_entity_ids=producer_entity_ids,
-            )
-
-            enricher_entity_ids = (field.get('id') for field in enricher_entity_ids)
-
-            film_work_rows = merger.aggregate_film_work_related_fields(
-                entity_ids=enricher_entity_ids,
-            )
-
-            grouped_films = self._group_data(film_works=film_work_rows)
-
-            # for i in merger_entity_ids:
-            #     print(i)
-            # break
+            grouped_films.extend(self._group_data(film_works=film_work_rows))
 
         return grouped_films

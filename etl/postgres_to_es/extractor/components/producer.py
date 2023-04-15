@@ -6,13 +6,13 @@ from datetime import datetime
 class BaseProducer(ABC):
     """Select all modified ids of an entity in a given period of time."""
 
-    def __init__(self, *, db_connection) -> None:
+    def __init__(self, db_connection) -> None:
         logging.debug("Initialize %s", type(self).__name__)
 
         self.db_connection = db_connection
 
     @abstractmethod
-    def extract_last_modified_entity_ids(self, *, modified_from_timestamp: datetime) -> list:
+    def extract_modified_entity_ids(self, *, modified_from_timestamp: datetime) -> list:
         """Select all modified ids of an entity in a given period of time.
 
         Args:
@@ -23,11 +23,11 @@ class BaseProducer(ABC):
         """
 
 
-class PersonProducer(BaseProducer):
+class Producer(BaseProducer):
 
-    def extract_last_modified_entity_ids(self, *, modified_from_timestamp: datetime) -> list:
+    def extract_modified_entity_ids(self, *, entity: str, modified_from_timestamp: datetime) -> list:
         last_modified_entity_ids = self.db_connection.select_last_modified_entity_ids(
-            entity='person',
+            entity=entity,
             modified_timestamp=modified_from_timestamp,
         )
         return last_modified_entity_ids

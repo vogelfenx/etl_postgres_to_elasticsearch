@@ -26,21 +26,6 @@ class PostgresConnection:
         """Close postgres connection."""
         self.connection.close()
 
-    def _execute_query(self, sql_query):
-        cursor = self.cursor
-
-        try:
-            cursor.execute(sql_query)
-        except psycopg2.Error as error:
-            logging.error('%s: %s', error.__class__.__name__, error)
-            raise error
-
-        while True:
-            rows = cursor.fetchmany(size=self.package_limit)
-            if not rows:
-                return
-            yield from rows
-
     def select_last_modified_entity_ids(self, *, entity: str, modified_timestamp: datetime):
         """Return last modified entity IDs."""
 
@@ -62,11 +47,11 @@ class PostgresConnection:
     def select_related_entity_ids(
         self,
         *,
-        select_entity,
+        entity_name,
         relation_table,
         parent_key,
         child_key,
-        relation_entity_ids,
+        parent_entity_ids,
     ):
         # SELECT fw.id, fw.modified
         # FROM content.film_work fw
@@ -75,14 +60,14 @@ class PostgresConnection:
         # ORDER BY fw.modified
         # LIMIT 100;
 
-        relation_entity_ids = ','.join(f"'{field}'" for field in relation_entity_ids)
+        parent_entity_ids = ','.join(f"'{field}'" for field in parent_entity_ids)
 
         cursor = self.cursor
         sql_query = f"""
         SELECT sel_table.id
-            FROM {select_entity} sel_table
+            FROM {entity_name} sel_table
             LEFT JOIN {relation_table} rel_table ON rel_table.{parent_key} = sel_table.id
-            WHERE rel_table.{child_key} IN ({relation_entity_ids})
+            WHERE rel_table.{child_key} IN ({parent_entity_ids})
             ORDER BY sel_table.modified;
         """
         try:

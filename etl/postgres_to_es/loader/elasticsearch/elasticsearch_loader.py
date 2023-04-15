@@ -48,7 +48,6 @@ class ElasticsearchLoader(Loader):
             }
             for document in documents
         ]
-        print(actions)
         # Perform the bulk update operation
         success_count, errors = bulk(self.connection, actions)
 

@@ -6,7 +6,7 @@ from typing import Generator
 class BaseMerger(ABC):
     """Select all missing fields of the selected entities (producer & enricher)."""
 
-    def __init__(self, *, db_connection) -> None:
+    def __init__(self, db_connection) -> None:
         logging.debug("Initialize %s", type(self).__name__)
         self.db_connection = db_connection
 
@@ -19,11 +19,11 @@ class BaseMerger(ABC):
         """
 
 
-class PersonMerger(BaseMerger):
+class MovieMerger(BaseMerger):
 
     def aggregate_film_work_related_fields(self, *, entity_ids: Generator) -> Generator:
-        aggregated_data = self.db_connection.select_film_work_related_fields(
+        aggregated_movies = self.db_connection.select_film_work_related_fields(
             film_work_ids=entity_ids,
         )
 
-        return aggregated_data
+        return aggregated_movies
