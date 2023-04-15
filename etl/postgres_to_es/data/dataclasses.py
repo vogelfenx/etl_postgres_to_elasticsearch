@@ -9,7 +9,7 @@ class Movie:
     imdb_rating: float
     title: str
     description: str
-    director: str = None
+    director: str = ''
     genre: List[str] = field(default_factory=list)
     actors_names: List[str] = field(default_factory=list)
     writers_names: List[str] = field(default_factory=list)
