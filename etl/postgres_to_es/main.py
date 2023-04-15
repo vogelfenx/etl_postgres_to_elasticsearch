@@ -28,6 +28,8 @@ def run_etl_process():
 
     loader.load_data(documents=collected_movies_data)
 
+    loader.delete_outdated_data(source_data_provider=pg_conn)
+
 
 if __name__ == '__main__':
     setup()

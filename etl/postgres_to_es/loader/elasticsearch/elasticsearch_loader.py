@@ -1,11 +1,12 @@
 from dataclasses import asdict
-from typing import List
+from typing import List, Set, Any
 
 from elasticsearch import Elasticsearch
 from elasticsearch.helpers import bulk
 
 from data.dataclasses import Movie
 from loader.loader import Loader
+import logging
 
 
 class ElasticsearchLoader(Loader):
@@ -24,7 +25,22 @@ class ElasticsearchLoader(Loader):
 
         self._create_index()
 
-        self._bulk_update_documents(documents=documents)
+        try:
+            self._bulk_update_documents(documents=documents)
+        except ValueError as error:
+            logging.error('%s: %s', error.__class__.__name__, error)
+
+    def delete_outdated_data(self, source_data_provider: Any) -> None:
+        """The data source that contains the data to be compared and potentially deleted if outdated."""
+        source_data_entity_ids = source_data_provider.select_all_entity_ids(entity='film_work')
+        source_data_entity_ids = [doc.get('id') for doc in source_data_entity_ids]
+
+        try:
+            deleted_docs = self._delete_missing_docs_by_ids(source_data_entity_ids)
+            if deleted_docs:
+                logging.warning('The following obsolete documents were deleted: %s', deleted_docs)
+        except ValueError as error:
+            logging.error('%s: %s', error.__class__.__name__, error)
 
     def _create_index(self):
         es_client = self.connection
@@ -55,6 +71,40 @@ class ElasticsearchLoader(Loader):
         if errors:
             error_count = len(errors)
             raise ValueError(
-                f'{error_count} errors occurred while updating documents in index {self.index_name}.')
+                f'{error_count} errors occurred while updating documents in index {self.index_name}.'
+            )
 
-        print(f'{success_count} documents in index {self.index_name} have been updated.')
+    def _delete_missing_docs_by_ids(self, docs_ids: List) -> List:
+        query = {
+            'query': {
+                'bool': {
+                    'must_not': [
+                        {
+                            'terms': {
+                                '_id': docs_ids,
+                            },
+                        },
+                    ],
+                },
+            },
+        }
+
+        response = self.connection.search(index=self.index_name, body=query)
+        not_found_docs_hits = response['hits']['hits']
+
+        not_found_docs_ids = [doc['_id'] for doc in not_found_docs_hits]
+
+        actions = [
+            {'_index': self.index_name, '_id': doc_id, '_op_type': 'delete'}
+            for doc_id in not_found_docs_ids
+        ]
+
+        _, errors = bulk(self.connection, actions)
+
+        if errors:
+            error_count = len(errors)
+            raise ValueError(
+                f'{error_count} errors occurred while updating documents in index {self.index_name}.'
+            )
+
+        return not_found_docs_ids

@@ -26,6 +26,21 @@ class PostgresConnection:
         """Close postgres connection."""
         self.connection.close()
 
+    def select_all_entity_ids(self, entity: str):
+        cursor = self.cursor
+
+        try:
+            cursor.execute(f"SELECT id FROM {entity}")
+        except psycopg2.Error as error:
+            logging.error('%s: %s', error.__class__.__name__, error)
+            raise error
+
+        while True:
+            rows = cursor.fetchmany(size=self.package_limit)
+            if not rows:
+                return
+            yield from rows
+
     def select_last_modified_entity_ids(self, *, entity: str, modified_timestamp: datetime):
         """Return last modified entity IDs."""
 
