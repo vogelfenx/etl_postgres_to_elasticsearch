@@ -42,7 +42,7 @@ class BaseExtractor:
                 movie = Movie(
                     id=film_work_id,
                     imdb_rating=imdb_rating,
-                    genres=[film_work_genre],
+                    genre=[film_work_genre],
                     title=film_work_title,
                     description=film_work_description,
                 )
@@ -63,8 +63,8 @@ class BaseExtractor:
             elif person_role == 'director':
                 movie.director = person_name
 
-            if film_work_genre not in movie.genres:
-                movie.genres.append(film_work_genre)
+            if film_work_genre not in movie.genre:
+                movie.genre.append(film_work_genre)
         return movies
 
 
