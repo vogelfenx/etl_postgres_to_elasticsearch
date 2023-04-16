@@ -12,7 +12,7 @@ from util.common.backoff import backoff
 from util.configuration import setup
 
 
-# @backoff(factor=2)
+@backoff(factor=2)
 def run_etl_process():
     """
         Run an ETL process for moving data from a Postgres database to an Elasticsearch index.

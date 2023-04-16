@@ -18,6 +18,14 @@ services:
     volumes: 
       - postgres_db_volume:/var/lib/postgresql/data      
 
+  etl_process:
+    build: postgres_to_es
+    env_file:
+      - ./postgres_to_es/.env
+    depends_on:
+      - postgres_db
+      - elasticsearch
+
 volumes:
   postgres_db_volume:
   esdata:

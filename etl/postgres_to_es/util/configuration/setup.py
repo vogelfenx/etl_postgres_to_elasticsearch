@@ -1,13 +1,13 @@
 from util.logger import Logger
 from pathlib import Path
 import re
-from logging import INFO, DEBUG
+import os
 
 
 def setup_logger():
     log_filepath = 'logs/.log'  # TODO: place it in config file
     log_filepath = None
-    level = DEBUG
+    level = os.environ.get('LOG_LEVEL', 'INFO')
 
     if log_filepath:
         filepath_parent_directories = re.split('[\\\/]', log_filepath)[:-1]
