@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+from contextlib import closing
 
 import dotenv
 
@@ -19,32 +20,33 @@ def run_etl_process():
 
         Uses a Multiple Query Data handling strategy to extract data from Postgres.
     """
-    pg_conn = PostgresConnection(dsn=dsn_postgres, package_limit=1000)
 
-    extractor = MultipleQueryExtractor(
-        db_connection=pg_conn,
-        entities_update_schema=entities_update_schema,
-        persistant_state_storage=JsonFileStorage.create_storage(),
-    )
+    with closing(PostgresConnection(dsn=dsn_postgres, package_limit=1000)) as pg_conn:
 
-    loader = ElasticsearchLoader(
-        host=elasticsearch_host,
-        index_name=elasticsearch_index_schema['index_name'],
-        index_settings=elasticsearch_index_schema['index_settings'],
-    )
+        extractor = MultipleQueryExtractor(
+            db_connection=pg_conn,
+            entities_update_schema=entities_update_schema,
+            persistant_state_storage=JsonFileStorage.create_storage(),
+        )
 
-    while True:
-        try:
-            is_last_data_chunk, collected_movies_data = extractor.extract_data()
-        except Exception:
-            raise
+        loader = ElasticsearchLoader(
+            host=elasticsearch_host,
+            index_name=elasticsearch_index_schema['index_name'],
+            index_settings=elasticsearch_index_schema['index_settings'],
+        )
 
-        loader.load_data(documents=collected_movies_data)
+        while True:
+            try:
+                is_last_data_chunk, collected_movies_data = extractor.extract_data()
+            except Exception:
+                raise
 
-        loader.delete_outdated_data(source_data_provider=pg_conn)
+            loader.load_data(documents=collected_movies_data)
 
-        if is_last_data_chunk:
-            break
+            loader.delete_outdated_data(source_data_provider=pg_conn)
+
+            if is_last_data_chunk:
+                break
 
 
 if __name__ == '__main__':
