@@ -136,3 +136,5 @@ dmypy.json
 
 # app stuff
 playground
+etl/postgres_to_es/state/state_data_storage/*
+!etl/postgres_to_es/state/state_data_storage/.keep
