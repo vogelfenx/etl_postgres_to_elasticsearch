@@ -9,6 +9,8 @@ services:
   elasticsearch:
     environment:
         - xpack.security.enabled=false
+    ports:
+      - "9200:9200"        
 
   kibana:
     image: docker.elastic.co/kibana/kibana:8.6.2
