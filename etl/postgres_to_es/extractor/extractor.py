@@ -12,6 +12,7 @@ from data.dataclasses import Movie
 from .components.enricher import Enricher
 from .components.merger import MovieMerger
 from .components.producer import Producer
+from state.state_manager import State
 
 
 class BaseExtractor:
@@ -71,46 +72,41 @@ class BaseExtractor:
 class MultipleQueryExtractor(BaseExtractor):
     """Implementation of extractor process using multiple database query strategy."""
 
-    def __init__(self, db_connection, entities_update_schema) -> None:
-        self.producer = Producer(db_connection)
+    def __init__(self, db_connection, persistant_state_storage, entities_update_schema) -> None:
+        producer_state = State(storage=persistant_state_storage)
+
+        self.producer = Producer(db_connection, producer_state)
         self.enricher = Enricher(db_connection)
         self.merger = MovieMerger(db_connection)
+
         self.entities_update_schema = entities_update_schema
+
         super().__init__(db_connection)
 
     def extract_data(self) -> list:
         """Extract data implementation."""
-        logging.debug("Extract data")
-
-        test_datetime = datetime(1, 1, 1)  # TODO use state storage
+        logging.debug('Extract data')
 
         grouped_films = []
         for _, entity_update_schema in self.entities_update_schema.items():
             producer_schema = entity_update_schema.get('producer')
             if producer_schema:
-                entity_ids = self.producer.extract_modified_entity_ids(
+                is_last_data_chunk, entity_ids = self.producer.extract_modified_entity_ids(
                     entity=producer_schema['entity_name'],
-                    modified_from_timestamp=test_datetime,
                 )
-                try:
-                    first_value = next(entity_ids)
-                    entity_ids = itertools.chain([first_value], entity_ids)
-                except StopIteration:
-                    break
-                entity_ids = (field.get('id') for field in entity_ids)
 
-            enricher_schema = entity_update_schema.get('enricher')
-            if enricher_schema:
-                entity_ids = self.enricher.extract_child_entity_ids(
-                    parent_entity_ids=entity_ids,
-                    entity_parameters=enricher_schema,
+            if entity_ids:
+                enricher_schema = entity_update_schema.get('enricher')
+                if enricher_schema:
+                    entity_ids = self.enricher.extract_child_entity_ids(
+                        parent_entity_ids=entity_ids,
+                        entity_parameters=enricher_schema,
+                    )
+
+                film_work_rows = self.merger.aggregate_film_work_related_fields(
+                    entity_ids=entity_ids,
                 )
-                entity_ids = (field.get('id') for field in entity_ids)
 
-            film_work_rows = self.merger.aggregate_film_work_related_fields(
-                entity_ids=entity_ids,
-            )
+                grouped_films.extend(self._group_data(film_works=film_work_rows))
 
-            grouped_films.extend(self._group_data(film_works=film_work_rows))
-
-        return grouped_films
+        return (is_last_data_chunk, grouped_films)

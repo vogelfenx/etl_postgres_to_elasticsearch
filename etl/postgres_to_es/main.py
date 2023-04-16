@@ -7,23 +7,20 @@ import dotenv
 from extractor import MultipleQueryExtractor
 from extractor.source_database.postgres import PostgresConnection
 from loader import ElasticsearchLoader
+from state.persistent_state_manager import JsonFileStorage
 from util.common.backoff import backoff
 from util.configuration import setup
 
 
-@backoff(factor=2)
+# @backoff(factor=2)
 def run_etl_process():
     pg_conn = PostgresConnection(dsn=dsn_postgres, package_limit=1000)
 
     extractor = MultipleQueryExtractor(
         db_connection=pg_conn,
         entities_update_schema=entities_update_schema,
+        persistant_state_storage=JsonFileStorage.create_storage(),
     )
-
-    try:
-        collected_movies_data = extractor.extract_data()
-    except Exception:
-        raise
 
     loader = ElasticsearchLoader(
         host=elasticsearch_host,
@@ -31,9 +28,18 @@ def run_etl_process():
         index_settings=elasticsearch_index_schema['index_settings'],
     )
 
-    loader.load_data(documents=collected_movies_data)
+    while True:
+        try:
+            is_last_data_chunk, collected_movies_data = extractor.extract_data()
+        except Exception:
+            raise
 
-    loader.delete_outdated_data(source_data_provider=pg_conn)
+        loader.load_data(documents=collected_movies_data)
+
+        loader.delete_outdated_data(source_data_provider=pg_conn)
+
+        if is_last_data_chunk:
+            break
 
 
 if __name__ == '__main__':

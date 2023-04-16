@@ -19,7 +19,7 @@ class PostgresConnection:
         self.connection = psycopg2.connect(**dsn, cursor_factory=DictCursor)
 
         self.cursor = self.connection.cursor()
-        self.package_limit = 10
+        self.package_limit = package_limit
         self.offset = 0
 
     def close(self):
@@ -47,17 +47,29 @@ class PostgresConnection:
         cursor = self.cursor
 
         # TODO implement validation for entity & modified_timestamp
+        sql_query = f"""
+        SELECT id, modified
+        FROM {entity}
+        WHERE modified > '{modified_timestamp}'
+        ORDER BY modified
+        LIMIT {self.package_limit}
+        """
         try:
-            cursor.execute(f"SELECT id FROM {entity} where modified > '{modified_timestamp}'")
+            cursor.execute(sql_query)
         except psycopg2.Error as error:
             logging.error('%s: %s', error.__class__.__name__, error)
             raise error
 
-        while True:
-            rows = cursor.fetchmany(size=self.package_limit)
-            if not rows:
-                return
+        rows = cursor.fetchall()
+
+        if self.package_limit > len(rows):
+            # last part of data to be processed
+            rows.insert(0, {'is_last_data_chunk': True})
             yield from rows
+            return
+        rows.insert(0, {'is_last_data_chunk': False})
+
+        yield from rows
 
     def select_related_entity_ids(
         self,
@@ -79,11 +91,12 @@ class PostgresConnection:
 
         cursor = self.cursor
         sql_query = f"""
-        SELECT sel_table.id
+        SELECT sel_table.id, sel_table.modified
             FROM {entity_name} sel_table
             LEFT JOIN {relation_table} rel_table ON rel_table.{parent_key} = sel_table.id
             WHERE rel_table.{child_key} IN ({parent_entity_ids})
-            ORDER BY sel_table.modified;
+            ORDER BY sel_table.modified
+            LIMIT {self.package_limit};
         """
         try:
             cursor.execute(sql_query)
@@ -91,11 +104,11 @@ class PostgresConnection:
             logging.error('%s: %s', error.__class__.__name__, error)
             raise error
 
-        while True:
-            rows = cursor.fetchmany(size=self.package_limit)
-            if not rows:
-                return
-            yield from rows
+        rows = cursor.fetchall()
+
+        yield from rows
+        if self.package_limit > len(rows):
+            return
 
     def select_film_work_related_fields(
         self,
@@ -130,9 +143,9 @@ class PostgresConnection:
 
         while True:
             rows = cursor.fetchmany(size=self.package_limit)
+            yield from rows
             if not rows:
                 return
-            yield from rows
 
     def _check_table_consistency(self, *, table_name: str):
         """Check if the given table exists.
