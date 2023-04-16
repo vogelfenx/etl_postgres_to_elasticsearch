@@ -14,6 +14,11 @@ from util.configuration import setup
 
 # @backoff(factor=2)
 def run_etl_process():
+    """
+        Run an ETL process for moving data from a Postgres database to an Elasticsearch index.
+
+        Uses a Multiple Query Data handling strategy to extract data from Postgres.
+    """
     pg_conn = PostgresConnection(dsn=dsn_postgres, package_limit=1000)
 
     extractor = MultipleQueryExtractor(

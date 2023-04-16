@@ -1,18 +1,20 @@
 import logging
+from datetime import datetime
+from typing import Generator, List, Any
 
 import psycopg2
 from psycopg2.extras import DictCursor
-from datetime import datetime
 
 
 class PostgresConnection:
     """PostgreSQL database handler."""
 
-    def __init__(self, dsn: dict, package_limit: int = None):
+    def __init__(self, dsn: dict, package_limit: int = 1000):
         """Postgres database handler.
 
         Args:
             dsn (dict): data source name for postgres connection
+            package_limit (int, optional): limit of the rows to fetch at once. Defaults to 1000.
         """
         logging.debug('initialize PostgresConnection')
 
@@ -26,7 +28,15 @@ class PostgresConnection:
         """Close postgres connection."""
         self.connection.close()
 
-    def select_all_entity_ids(self, entity: str):
+    def select_all_entity_ids(self, entity: str) -> Generator:
+        """Select all entity IDs.
+
+        Args:
+            entity (str): entity name
+
+        Yields:
+            str: entity IDs
+        """
         cursor = self.cursor
 
         try:
@@ -41,12 +51,20 @@ class PostgresConnection:
                 return
             yield from rows
 
-    def select_last_modified_entity_ids(self, *, entity: str, modified_timestamp: datetime):
-        """Return last modified entity IDs."""
+    def select_last_modified_entity_ids(self, *, entity: str, modified_timestamp: datetime) -> Generator:
+        """Select last modified entity IDs.
+
+        Args:
+            entity (str): entity name
+            modified_timestamp (datetime): modified timestamp
+
+        Yields:
+            dict: A dictionary with `id` and `modified` keys.
+                  The last record has an additional `is_last_data_chunk` key with a boolean value.
+        """
 
         cursor = self.cursor
 
-        # TODO implement validation for entity & modified_timestamp
         sql_query = f"""
         SELECT id, modified
         FROM {entity}
@@ -63,7 +81,6 @@ class PostgresConnection:
         rows = cursor.fetchall()
 
         if self.package_limit > len(rows):
-            # last part of data to be processed
             rows.insert(0, {'is_last_data_chunk': True})
             yield from rows
             return
@@ -74,19 +91,24 @@ class PostgresConnection:
     def select_related_entity_ids(
         self,
         *,
-        entity_name,
-        relation_table,
-        parent_key,
-        child_key,
-        parent_entity_ids,
+        entity_name: str,
+        relation_table: str,
+        parent_key: str,
+        child_key: str,
+        parent_entity_ids: List[str],
     ):
-        # SELECT fw.id, fw.modified
-        # FROM content.film_work fw
-        # LEFT JOIN content.person_film_work pfw ON pfw.film_work_id = fw.id
-        # WHERE pfw.person_id IN (<id_всех_людей>)
-        # ORDER BY fw.modified
-        # LIMIT 100;
+        """Select related entity IDs.
 
+        Args:
+            entity_name (str): entity name
+            relation_table (str): relation table name
+            parent_key (str): parent key name
+            child_key (str): child key name
+            parent_entity_ids (List[str]): parent entity IDs
+
+        Yields:
+            dict: A dictionary with `id` and `modified` keys.
+        """
         parent_entity_ids = ','.join(f"'{field}'" for field in parent_entity_ids)
 
         cursor = self.cursor
@@ -112,9 +134,16 @@ class PostgresConnection:
 
     def select_film_work_related_fields(
         self,
-        film_work_ids,
+        film_work_ids: List[str],
     ):
+        """Return film work related fields for given film work ids.
 
+        Args:
+            film_work_ids (list[str]): a list of film work ids to fetch data for
+
+        Yields:
+            Dict[str, Any]: a dictionary containing film work related fields for a single film work id
+        """
         film_work_ids = ','.join(f"'{field}'" for field in film_work_ids)
 
         cursor = self.cursor

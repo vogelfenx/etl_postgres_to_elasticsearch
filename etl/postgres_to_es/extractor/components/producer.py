@@ -1,33 +1,36 @@
 import logging
-from abc import ABC, abstractmethod
 from datetime import datetime
-from typing import List
+from typing import Any, List
+
+from state.state_manager import State
 
 
-class BaseProducer(ABC):
-    """Select all modified ids of an entity in a given period of time."""
+class Producer:
+    """Fetch modified entity ids for a given entity in a given period of time."""
 
-    def __init__(self, db_connection, state) -> None:
+    def __init__(self, db_connection: Any, state: State) -> None:
+        """
+        Initialize a Producer object.
+
+        Args:
+            db_connection (Any): The database connection object.
+            state (State): The state object.
+        """
         logging.debug("Initialize %s", type(self).__name__)
         self.db_connection = db_connection
         self.state = state
 
-    @abstractmethod
-    def extract_modified_entity_ids(self, *, modified_from_timestamp: datetime) -> list:
-        """Select all modified ids of an entity in a given period of time.
+    def extract_modified_entity_ids(self, *, entity: str) -> tuple[bool, List[int]]:
+        """
+        Extract the modified records ids for a given entity.
 
         Args:
-            modified_from (datetime): Select condition of modified records by datetime
+            entity (str): The name of the entity to extract.
 
         Returns:
-            list: ids of last modified entity records by the given time period.
+            Tuple[bool, List[int]]: A tuple containing a boolean indicating whether this is the last data chunk, 
+            and a list of the modified entity ids.
         """
-
-
-class Producer(BaseProducer):
-
-    def extract_modified_entity_ids(self, *, entity: str) -> List:
-
         producer_state_key = f'producer.{entity}'
         last_processed_modified_field = self.state.get_state(key=producer_state_key)
 

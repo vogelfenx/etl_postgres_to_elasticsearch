@@ -1,32 +1,56 @@
 
-import itertools
 import logging
 from abc import abstractmethod
-from datetime import datetime
-from typing import Generator
+from typing import Generator, Any, List
 
 from psycopg2.extras import DictRow
 
 from data.dataclasses import Movie
+from state.state_manager import State
 
 from .components.enricher import Enricher
 from .components.merger import MovieMerger
 from .components.producer import Producer
-from state.state_manager import State
 
 
 class BaseExtractor:
-    """Abstract class for extractor process."""
+    """
+    Abstract class for extractor process.
+    """
 
-    def __init__(self, db_connection) -> None:
+    def __init__(self, db_connection: Any) -> None:
+        """
+        Initializes the BaseExtractor class.
+
+        Args:
+            db_connection (Any): the database connection object
+        """
         logging.debug("Initialize %s: \n\t%s", self.__class__.__name__, self.__doc__)
         self.db_connection = db_connection
 
     @abstractmethod
-    def extract_data(self, entity, package_size) -> dict:
-        """Extract all needed data for a given entity."""
+    def extract_data(self, entity: str, package_size: int) -> dict:
+        """
+        Extracts all needed data for a given entity.
 
-    def _group_data(self, film_works: Generator[DictRow, None, None]) -> list:
+        Args:
+            entity (str): the entity for which to extract data
+            package_size (int): the size of the data package to extract
+
+        Returns:
+            dict: the extracted data
+        """
+
+    def _group_data(self, film_works: Generator[DictRow, None, None]) -> List[Movie]:
+        """
+        Groups the extracted data into a list of movies.
+
+        Args:
+            film_works (Generator[DictRow, None, None]): the extracted data to group
+
+        Returns:
+            List[Movie]: a list of grouped movies
+        """
         movies = []
 
         for film_work in film_works:
@@ -70,9 +94,19 @@ class BaseExtractor:
 
 
 class MultipleQueryExtractor(BaseExtractor):
-    """Implementation of extractor process using multiple database query strategy."""
+    """
+    Implementation of extractor process using multiple database query strategy.
+    """
 
-    def __init__(self, db_connection, persistant_state_storage, entities_update_schema) -> None:
+    def __init__(self, db_connection: Any, persistant_state_storage: dict, entities_update_schema: dict) -> None:
+        """
+        Initializes the MultipleQueryExtractor class.
+
+        Args:
+            db_connection (Any): the database connection object
+            persistant_state_storage (dict): the persistent state storage object
+            entities_update_schema (dict): the schema for updating entities
+        """
         producer_state = State(storage=persistant_state_storage)
 
         self.producer = Producer(db_connection, producer_state)
@@ -83,8 +117,15 @@ class MultipleQueryExtractor(BaseExtractor):
 
         super().__init__(db_connection)
 
-    def extract_data(self) -> list:
-        """Extract data implementation."""
+    def extract_data(self) -> tuple[bool, List[Movie]]:
+        """
+        Extracts data.
+
+        Returns:
+            A tuple with two elements:
+            - A boolean indicating whether this is the last chunk of data to be extracted.
+            - A list of Movie objects extracted from the database.
+        """
         logging.debug('Extract data')
 
         grouped_films = []

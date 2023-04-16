@@ -1,27 +1,25 @@
 import logging
-from abc import ABC, abstractmethod
-from typing import Generator
+from typing import Generator, List
 
 
-class BaseMerger(ABC):
-    """Select all missing fields of the selected entities (producer & enricher)."""
+class MovieMerger:
+    """
+    Class to select all missing fields of the selected film works.
+    """
 
     def __init__(self, db_connection) -> None:
         logging.debug("Initialize %s", type(self).__name__)
         self.db_connection = db_connection
 
-    @abstractmethod
-    def aggregate_film_work_related_fields(self, *, entity_ids: Generator) -> Generator:
-        """_summary_.
+    def aggregate_film_work_related_fields(self, *, entity_ids: List[str]) -> Generator:
+        """Aggregate all the film work related fields.
 
         Args:
-            entity_ids (list): _description_
+            entity_ids (Generator): A generator object of entity IDs.
+
+        Returns:
+            Generator: A generator object of aggregated movies.
         """
-
-
-class MovieMerger(BaseMerger):
-
-    def aggregate_film_work_related_fields(self, *, entity_ids: Generator) -> Generator:
         aggregated_movies = self.db_connection.select_film_work_related_fields(
             film_work_ids=entity_ids,
         )
