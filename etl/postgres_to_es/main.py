@@ -1,5 +1,4 @@
 import json
-import logging
 import os
 from contextlib import closing
 from time import sleep
@@ -9,10 +8,11 @@ from extractor.source_database.postgres import PostgresConnection
 from loader import ElasticsearchLoader
 from state.persistent_state_manager import JsonFileStorage
 from util.common.backoff import backoff
-from util.configuration import setup
+from util.configuration import LOGGER
+
+# @backoff(factor=2)
 
 
-@backoff(factor=2)
 def run_etl_process():
     """
         Run an ETL process for moving data from a Postgres database to an Elasticsearch index.
@@ -20,7 +20,7 @@ def run_etl_process():
         Uses a Multiple Query Data handling strategy to extract data from Postgres.
     """
 
-    with closing(PostgresConnection(dsn=dsn_postgres, package_limit=1000)) as pg_conn:
+    with closing(PostgresConnection(dsn=dsn_postgres, package_limit=400)) as pg_conn:
 
         extractor = MultipleQueryExtractor(
             db_connection=pg_conn,
@@ -43,18 +43,25 @@ def run_etl_process():
 
             if collected_movies_data:
                 processed_data_count += len(collected_movies_data)
-            loader.load_data(documents=collected_movies_data)
+                LOGGER.info('Number of found data to be load: %s', processed_data_count)
 
-            loader.delete_outdated_data(source_data_provider=pg_conn)
+                loader.load_data(documents=collected_movies_data)
+
+                loader.delete_outdated_data(source_data_provider=pg_conn)
 
             PROCESS_SLEEP = 1
 
+            LOGGER.info(
+                f'ETL process finished.\n \
+                  Number of data loaded: {processed_data_count}\n \
+                  Next processing in {PROCESS_SLEEP} seconds.',
+            )
             # sleep(PROCESS_SLEEP)
+            input('Pause')
+
 
 if __name__ == '__main__':
-    setup()
-
-    logging.debug('%s', 'start etl process')
+    LOGGER.debug('%s', 'start etl process')
 
     dsn_postgres = {
         'dbname': os.getenv('PG_DB_NAME'),

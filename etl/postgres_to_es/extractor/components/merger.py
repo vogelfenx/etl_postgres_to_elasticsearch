@@ -1,5 +1,6 @@
-import logging
 from typing import Generator, List
+
+from util.configuration import LOGGER
 
 
 class MovieMerger:
@@ -8,7 +9,7 @@ class MovieMerger:
     """
 
     def __init__(self, db_connection) -> None:
-        logging.debug("Initialize %s", type(self).__name__)
+        LOGGER.debug("Initialize %s", type(self).__name__)
         self.db_connection = db_connection
 
     def aggregate_film_work_related_fields(self, *, entity_ids: List[str]) -> Generator:

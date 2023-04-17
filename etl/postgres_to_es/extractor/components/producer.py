@@ -1,4 +1,4 @@
-import logging
+from util.configuration import LOGGER
 from datetime import datetime
 from typing import Any, List
 
@@ -16,7 +16,7 @@ class Producer:
             db_connection (Any): The database connection object.
             state (State): The state object.
         """
-        logging.debug("Initialize %s", type(self).__name__)
+        LOGGER.debug("Initialize %s", type(self).__name__)
         self.db_connection = db_connection
         self.state = state
 

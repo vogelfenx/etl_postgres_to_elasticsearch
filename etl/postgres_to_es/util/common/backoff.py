@@ -1,6 +1,6 @@
 from functools import wraps
 from time import sleep
-import logging
+from util.configuration import LOGGER
 from typing import Callable
 
 
@@ -35,7 +35,7 @@ def backoff(
             sleep_time = start_sleep_time
 
             num_calls += 1
-            logging.debug(
+            LOGGER.debug(
                 'Backoff function try %s: %s. time',
                 function_wrapper.__name__,
                 num_calls,
@@ -47,7 +47,7 @@ def backoff(
                     sleep_time *= factor
                     if sleep_time >= border_sleep_time:
                         sleep_time = start_sleep_time
-                    logging.error(
+                    LOGGER.error(
                         'Function call %s() failed. Next try in %s seconds',
                         function_wrapper.__name__,
                         sleep_time,

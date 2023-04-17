@@ -1,11 +1,12 @@
-import logging
 from typing import Dict, List
+
+from util.configuration import LOGGER
 
 
 class Enricher:
 
     def __init__(self, db_connection, state=None) -> None:
-        logging.debug("Initialize %s: \n\t%s", self.__class__.__name__, self.__doc__)
+        LOGGER.debug("Initialize %s: \n\t%s", self.__class__.__name__, self.__doc__)
         self.db_connection = db_connection
         self.state = state
 

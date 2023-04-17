@@ -1,4 +1,4 @@
-import logging
+from util.configuration import LOGGER
 from dataclasses import asdict
 from typing import Any, List
 
@@ -43,7 +43,7 @@ class ElasticsearchLoader(Loader):
         try:
             self._bulk_update_documents(documents=documents)
         except ValueError as error:
-            logging.error('%s: %s', error.__class__.__name__, error)
+            LOGGER.error('%s: %s', error.__class__.__name__, error)
 
     def delete_outdated_data(self, source_data_provider: Any) -> None:
         """
@@ -60,9 +60,9 @@ class ElasticsearchLoader(Loader):
         try:
             deleted_docs = self._delete_missing_docs_by_ids(source_data_entity_ids)
             if deleted_docs:
-                logging.warning('The following obsolete documents were deleted: %s', deleted_docs)
+                LOGGER.warning('The following obsolete documents were deleted: %s', deleted_docs)
         except ValueError as error:
-            logging.error('%s: %s', error.__class__.__name__, error)
+            LOGGER.error('%s: %s', error.__class__.__name__, error)
 
     def _create_index(self) -> None:
         """

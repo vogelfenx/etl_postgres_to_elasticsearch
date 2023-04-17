@@ -1,5 +1,4 @@
 
-import logging
 from abc import abstractmethod
 from collections import defaultdict
 from datetime import datetime
@@ -10,6 +9,7 @@ from psycopg2.extras import DictRow
 
 from data.dataclasses import Movie
 from state.state_manager import State
+from util.configuration import LOGGER
 
 from .components.enricher import Enricher
 from .components.merger import MovieMerger
@@ -28,7 +28,7 @@ class BaseExtractor:
         Args:
             db_connection (Any): the database connection object
         """
-        logging.debug("Initialize %s: \n\t%s", self.__class__.__name__, self.__doc__)
+        LOGGER.debug("Initialize %s: \n\t%s", self.__class__.__name__, self.__doc__)
         self.db_connection = db_connection
 
     @abstractmethod
@@ -119,7 +119,7 @@ class MultipleQueryExtractor(BaseExtractor):
             - A boolean indicating whether this is the last chunk of data to be extracted.
             - A list of Movie objects extracted from the database.
         """
-        logging.debug('Extract data')
+        LOGGER.debug('Extract data')
 
         grouped_films = []
         for _, entity_update_schema in self.entities_update_schema.items():
@@ -147,20 +147,20 @@ class MultipleQueryExtractor(BaseExtractor):
                 new_state_value = new_state_value.strftime('%Y-%m-%d %H:%M:%S')
                 self.producer.state.set_state(state_key, new_state_value)
 
-            if entity_ids:
-                enricher_schema = entity_update_schema.get('enricher')
+                if entity_ids:
+                    enricher_schema = entity_update_schema.get('enricher')
 
-                if enricher_schema:
-                    entity_ids = self.enricher.extract_child_entity_ids(
-                        parent_entity_ids=entity_ids,
-                        entity_parameters=enricher_schema,
+                    if enricher_schema:
+                        entity_ids = self.enricher.extract_child_entity_ids(
+                            parent_entity_ids=entity_ids,
+                            entity_parameters=enricher_schema,
+                        )
+
+                    film_work_rows = self.merger.aggregate_film_work_related_fields(
+                        entity_ids=entity_ids,
                     )
 
-                film_work_rows = self.merger.aggregate_film_work_related_fields(
-                    entity_ids=entity_ids,
-                )
-
-                movies = self._transform_film_works_to_dataclass(film_works=film_work_rows)
-                grouped_films.extend(movies)
+                    movies = self._transform_film_works_to_dataclass(film_works=film_work_rows)
+                    grouped_films.extend(movies)
 
         return grouped_films

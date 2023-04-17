@@ -1,9 +1,10 @@
-import logging
 from datetime import datetime
-from typing import Generator, List, Any
+from typing import Generator, List
 
 import psycopg2
 from psycopg2.extras import DictCursor
+
+from util.configuration import LOGGER
 
 
 class PostgresConnection:
@@ -16,7 +17,7 @@ class PostgresConnection:
             dsn (dict): data source name for postgres connection
             package_limit (int, optional): limit of the rows to fetch at once. Defaults to 1000.
         """
-        logging.debug('initialize PostgresConnection')
+        LOGGER.debug('initialize PostgresConnection')
 
         self.connection = psycopg2.connect(**dsn, cursor_factory=DictCursor)
 
@@ -42,7 +43,7 @@ class PostgresConnection:
         try:
             cursor.execute(f"SELECT id FROM {entity}")
         except psycopg2.Error as error:
-            logging.error('%s: %s', error.__class__.__name__, error)
+            LOGGER.error('%s: %s', error.__class__.__name__, error)
             raise error
 
         while True:
@@ -75,7 +76,7 @@ class PostgresConnection:
         try:
             cursor.execute(sql_query)
         except psycopg2.Error as error:
-            logging.error('%s: %s', error.__class__.__name__, error)
+            LOGGER.error('%s: %s', error.__class__.__name__, error)
             raise error
 
         rows = cursor.fetchall()
@@ -123,7 +124,7 @@ class PostgresConnection:
         try:
             cursor.execute(sql_query)
         except psycopg2.Error as error:
-            logging.error('%s: %s', error.__class__.__name__, error)
+            LOGGER.error('%s: %s', error.__class__.__name__, error)
             raise error
 
         rows = cursor.fetchall()
@@ -175,7 +176,7 @@ class PostgresConnection:
         try:
             cursor.execute(sql_query)
         except psycopg2.Error as error:
-            logging.error('%s: %s', error.__class__.__name__, error)
+            LOGGER.error('%s: %s', error.__class__.__name__, error)
             raise error
 
         while True:
