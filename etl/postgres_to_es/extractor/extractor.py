@@ -1,8 +1,11 @@
 
 import logging
 from abc import abstractmethod
-from typing import Generator, Any, List
+from collections import defaultdict
+from datetime import datetime
+from typing import Any, Generator, List
 
+import pytz
 from psycopg2.extras import DictRow
 
 from data.dataclasses import Movie
@@ -86,6 +89,7 @@ class MultipleQueryExtractor(BaseExtractor):
     """
     Implementation of extractor process using multiple database query strategy.
     """
+    last_state = defaultdict(lambda: datetime(1, 1, 1, tzinfo=pytz.timezone('UTC')))
 
     def __init__(self, db_connection: Any, persistant_state_storage: dict, entities_update_schema: dict) -> None:
         """
@@ -120,13 +124,32 @@ class MultipleQueryExtractor(BaseExtractor):
         grouped_films = []
         for _, entity_update_schema in self.entities_update_schema.items():
             producer_schema = entity_update_schema.get('producer')
+            entity_name = producer_schema['entity_name']
+
+            state_key = f'producer.{entity_name}'
+            state_value = self.producer.state.get_state(key=state_key)
+
+            if not state_value:
+                state_value = datetime(1, 1, 1)
+
             if producer_schema:
-                is_last_data_chunk, entity_ids = self.producer.extract_modified_entity_ids(
-                    entity=producer_schema['entity_name'],
+                new_state_value, entity_ids = self.producer.extract_modified_entity_ids(
+                    entity=entity_name,
+                    modified_timestamp=state_value,
                 )
+
+            is_new_updated_entity = new_state_value > self.last_state[state_key]
+
+            if is_new_updated_entity:
+                LOGGER.debug("Next or new data found, continue extraction process")
+
+                self.last_state[state_key] = new_state_value
+                new_state_value = new_state_value.strftime('%Y-%m-%d %H:%M:%S')
+                self.producer.state.set_state(state_key, new_state_value)
 
             if entity_ids:
                 enricher_schema = entity_update_schema.get('enricher')
+
                 if enricher_schema:
                     entity_ids = self.enricher.extract_child_entity_ids(
                         parent_entity_ids=entity_ids,
@@ -140,4 +163,4 @@ class MultipleQueryExtractor(BaseExtractor):
                 movies = self._transform_film_works_to_dataclass(film_works=film_work_rows)
                 grouped_films.extend(movies)
 
-        return (is_last_data_chunk, grouped_films)
+        return grouped_films

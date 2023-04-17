@@ -2,6 +2,7 @@ import json
 import logging
 import os
 from contextlib import closing
+from time import sleep
 
 from extractor import MultipleQueryExtractor
 from extractor.source_database.postgres import PostgresConnection
@@ -34,18 +35,21 @@ def run_etl_process():
         )
 
         while True:
+            processed_data_count = 0
             try:
-                is_last_data_chunk, collected_movies_data = extractor.extract_data()
+                collected_movies_data = extractor.extract_data()
             except Exception:
                 raise
 
+            if collected_movies_data:
+                processed_data_count += len(collected_movies_data)
             loader.load_data(documents=collected_movies_data)
 
             loader.delete_outdated_data(source_data_provider=pg_conn)
 
-            if is_last_data_chunk:
-                break
+            PROCESS_SLEEP = 1
 
+            # sleep(PROCESS_SLEEP)
 
 if __name__ == '__main__':
     setup()
