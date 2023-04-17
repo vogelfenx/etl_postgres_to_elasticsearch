@@ -41,55 +41,44 @@ class BaseExtractor:
             dict: the extracted data
         """
 
-    def _group_data(self, film_works: Generator[DictRow, None, None]) -> List[Movie]:
+    def _transform_film_works_to_dataclass(self, film_works: Generator[DictRow, None, None]) -> List[Movie]:
         """
-        Groups the extracted data into a list of movies.
+        Groups data into a list of movies.
 
         Args:
-            film_works (Generator[DictRow, None, None]): the extracted data to group
+            film_works (Generator[DictRow, None, None]): the extracted data
 
         Returns:
             List[Movie]: a list of grouped movies
         """
         movies = []
-
         for film_work in film_works:
+            movie = Movie(
+                id=film_work['fw_id'],
+                imdb_rating=film_work['rating'],
+                genre=film_work['genres'],
+                title=film_work['title'],
+                description=film_work['description'],
+            )
 
-            film_work_id = film_work.get('fw_id')
-            film_work_title = film_work.get('title')
-            film_work_description = film_work.get('description')
-            film_work_genre = film_work.get('genre')
-            imdb_rating = film_work.get('rating')
+            persons = film_work.get('persons')
+            if persons:
+                for person in persons:
+                    person_role = person['person_role']
+                    person_id = person['person_id']
+                    person_name = person['full_name']
 
-            movie = next((movie for movie in movies if movie.id == film_work_id), None)
+                    if person_role == 'actor':
+                        movie.actors.append({'id': person_id, 'name': person_name})
+                        movie.actors_names.append(person_name)
+                    if person_role == 'writer':
+                        movie.writers.append({'id': person_id, 'name': person_name})
+                        movie.writers_names.append(person_name)
+                    elif person_role == 'director':
+                        movie.director = person_name
 
-            if not movie:
-                movie = Movie(
-                    id=film_work_id,
-                    imdb_rating=imdb_rating,
-                    genre=[film_work_genre],
-                    title=film_work_title,
-                    description=film_work_description,
-                )
-                movies.append(movie)
+            movies.append(movie)
 
-            person_id = film_work.get('person_id')
-            person_name = film_work.get('full_name')
-            person_role = film_work.get('role')
-
-            if person_role == 'actor':
-                if person_name not in movie.actors_names:
-                    movie.actors.append({'id': person_id, 'name': person_name})
-                    movie.actors_names.append(person_name)
-            elif person_role == 'writer':
-                if person_name not in movie.writers_names:
-                    movie.writers.append({'id': person_id, 'name': person_name})
-                    movie.writers_names.append(person_name)
-            elif person_role == 'director':
-                movie.director = person_name
-
-            if film_work_genre not in movie.genre:
-                movie.genre.append(film_work_genre)
         return movies
 
 
@@ -148,6 +137,7 @@ class MultipleQueryExtractor(BaseExtractor):
                     entity_ids=entity_ids,
                 )
 
-                grouped_films.extend(self._group_data(film_works=film_work_rows))
+                movies = self._transform_film_works_to_dataclass(film_works=film_work_rows)
+                grouped_films.extend(movies)
 
         return (is_last_data_chunk, grouped_films)

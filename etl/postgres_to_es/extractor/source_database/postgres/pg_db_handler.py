@@ -149,20 +149,28 @@ class PostgresConnection:
         cursor = self.cursor
         sql_query = f"""
             SELECT
-                fw.id as fw_id, 
-                fw.title, 
-                fw.description, 
-                fw.rating, 
-                pfw.role, 
-                p.id as person_id, 
-                p.full_name,
-                g.name as genre
+                fw.id as fw_id,
+                fw.title,
+                fw.description,
+                fw.rating,
+                COALESCE (
+                    json_agg(
+                            DISTINCT jsonb_build_object(
+                            'person_id', p.id,
+                            'full_name', p.full_name,
+                            'person_role', pfw.role
+                            )
+                    ) FILTER (WHERE p.id is not null),
+                    '[]'
+                ) as persons,
+                array_agg(DISTINCT g.name) as genres
             FROM content.film_work fw
             LEFT JOIN content.person_film_work pfw ON pfw.film_work_id = fw.id
             LEFT JOIN content.person p ON p.id = pfw.person_id
             LEFT JOIN content.genre_film_work gfw ON gfw.film_work_id = fw.id
             LEFT JOIN content.genre g ON g.id = gfw.genre_id
-            WHERE fw.id IN ({film_work_ids});
+            WHERE fw.id IN ({film_work_ids})
+            GROUP BY fw.id;
         """
         try:
             cursor.execute(sql_query)
