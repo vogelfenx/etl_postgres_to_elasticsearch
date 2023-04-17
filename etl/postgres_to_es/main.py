@@ -8,11 +8,10 @@ from extractor.source_database.postgres import PostgresConnection
 from loader import ElasticsearchLoader
 from state.persistent_state_manager import JsonFileStorage
 from util.common.backoff import backoff
-from util.configuration import LOGGER
-
-# @backoff(factor=2)
+from util.configuration import LOGGER, read_app_config
 
 
+@backoff(factor=2)
 def run_etl_process():
     """
         Run an ETL process for moving data from a Postgres database to an Elasticsearch index.
@@ -20,7 +19,7 @@ def run_etl_process():
         Uses a Multiple Query Data handling strategy to extract data from Postgres.
     """
 
-    with closing(PostgresConnection(dsn=dsn_postgres, package_limit=400)) as pg_conn:
+    with closing(PostgresConnection(dsn=dsn_postgres)) as pg_conn:
 
         extractor = MultipleQueryExtractor(
             db_connection=pg_conn,
@@ -35,6 +34,10 @@ def run_etl_process():
         )
 
         while True:
+            configurations = read_app_config()
+            pg_conn.package_limit = configurations['PAGE_DATA_SIZE_LIMIT']
+            process_sleep_time = configurations["PROCESS_SLEEP_TIME"]
+
             processed_data_count = 0
             try:
                 collected_movies_data = extractor.extract_data()
@@ -49,15 +52,13 @@ def run_etl_process():
 
                 loader.delete_outdated_data(source_data_provider=pg_conn)
 
-            PROCESS_SLEEP = 1
-
             LOGGER.info(
                 f'ETL process finished.\n \
                   Number of data loaded: {processed_data_count}\n \
-                  Next processing in {PROCESS_SLEEP} seconds.',
+                  Next processing in {process_sleep_time} seconds.',
             )
-            # sleep(PROCESS_SLEEP)
-            input('Pause')
+
+            sleep(process_sleep_time)
 
 
 if __name__ == '__main__':
