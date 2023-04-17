@@ -61,7 +61,6 @@ class PostgresConnection:
 
         Yields:
             dict: A dictionary with `id` and `modified` keys.
-                  The last record has an additional `is_last_data_chunk` key with a boolean value.
         """
 
         cursor = self.cursor
@@ -82,10 +81,8 @@ class PostgresConnection:
         rows = cursor.fetchall()
 
         if self.package_limit > len(rows):
-            rows.insert(0, {'is_last_data_chunk': True})
             yield from rows
             return
-        rows.insert(0, {'is_last_data_chunk': False})
 
         yield from rows
 

@@ -20,7 +20,7 @@ class Producer:
         self.db_connection = db_connection
         self.state = state
 
-    def extract_modified_entity_ids(self, *, entity: str, modified_timestamp) -> tuple[bool, List[int]]:
+    def extract_modified_entity_ids(self, *, entity: str, modified_timestamp) -> tuple[datetime, List[int]]:
         """
         Extract the modified records ids for a given entity.
 
@@ -28,15 +28,13 @@ class Producer:
             entity (str): The name of the entity to extract.
 
         Returns:
-            Tuple[bool, List[int]]: A tuple containing a boolean indicating whether this is the last data chunk, 
-            and a list of the modified entity ids.
+            Tuple[bool, List[int]]: last_modified_timestamp and a list of the modified entity ids.
         """
         last_modified_entity_ids = self.db_connection.select_last_modified_entity_ids(
             entity=entity,
             modified_timestamp=modified_timestamp,
         )
 
-        is_last_data_chunk = next(last_modified_entity_ids).get('is_last_data_chunk')
         last_modified_entity_ids = list(last_modified_entity_ids)
 
         if last_modified_entity_ids:

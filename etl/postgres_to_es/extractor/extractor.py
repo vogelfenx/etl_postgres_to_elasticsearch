@@ -115,11 +115,9 @@ class MultipleQueryExtractor(BaseExtractor):
         Extracts data.
 
         Returns:
-            A tuple with two elements:
-            - A boolean indicating whether this is the last chunk of data to be extracted.
             - A list of Movie objects extracted from the database.
         """
-        LOGGER.debug('Extract data')
+        LOGGER.info('Extract data')
 
         grouped_films = []
         for _, entity_update_schema in self.entities_update_schema.items():
@@ -141,7 +139,7 @@ class MultipleQueryExtractor(BaseExtractor):
             is_new_updated_entity = new_state_value > self.last_state[state_key]
 
             if is_new_updated_entity:
-                LOGGER.debug("Next or new data found, continue extraction process")
+                LOGGER.debug('Next or new data found, continue extraction process')
 
                 self.last_state[state_key] = new_state_value
                 new_state_value = new_state_value.strftime('%Y-%m-%d %H:%M:%S')
