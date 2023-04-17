@@ -3,8 +3,6 @@ import logging
 import os
 from contextlib import closing
 
-import dotenv
-
 from extractor import MultipleQueryExtractor
 from extractor.source_database.postgres import PostgresConnection
 from loader import ElasticsearchLoader
@@ -51,7 +49,6 @@ def run_etl_process():
 
 if __name__ == '__main__':
     setup()
-    dotenv.load_dotenv()
 
     logging.debug('%s', 'start etl process')
 
