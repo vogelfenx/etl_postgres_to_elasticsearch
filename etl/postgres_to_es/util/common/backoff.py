@@ -4,6 +4,7 @@ from util.configuration import LOGGER
 from typing import Callable
 
 
+# здорово, что сделал кастомную реализацию, молодец
 def backoff(
     *,
     start_sleep_time: float = 0.1,
@@ -46,6 +47,9 @@ def backoff(
                 except Exception:
                     sleep_time *= factor
                     if sleep_time >= border_sleep_time:
+                        # возможно, я неправильно понял
+                        # но, как мне кажется sleep_time тут должен был
+                        # стать равным border_sleep_time
                         sleep_time = start_sleep_time
                     LOGGER.error(
                         'Function call %s() failed. Next try in %s seconds',

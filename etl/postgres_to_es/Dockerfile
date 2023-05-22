@@ -15,6 +15,8 @@ COPY entrypoint.sh entrypoint.sh
 
 COPY . .
 
+# Здорово, что работа процесса сервиса организована под отдельным пользователем
+# и группой
 RUN groupadd -r app && useradd -d /opt/app -r -g app app \
     && chown app:app -R /opt/app
 

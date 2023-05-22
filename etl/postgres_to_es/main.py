@@ -11,6 +11,10 @@ from util.common.backoff import backoff
 from util.configuration import LOGGER, read_app_config
 
 
+# как мне кажется, стоило бы backoff применить не к итерации etl целиком
+# а к конкретному шагу, вроде экстракции или загрузке
+# в текущей реализации, получается, весь процесс стартует заново
+# при падении на одном из шагов
 @backoff(factor=2)
 def run_etl_process():
     """
@@ -25,6 +29,19 @@ def run_etl_process():
             db_connection=pg_conn,
             entities_update_schema=entities_update_schema,
             persistant_state_storage=JsonFileStorage.create_storage(),
+            # посмотрел, как реализована работа с состоянием
+            # хорошая работа с абстракциями, здорово
+
+            # но есть замечания
+            # насколько я понял, set_state у тебя делается при экстракте
+            # по идее, это не правильно, т.к. нужно делать после успешной загрузке данных в приемник
+            # особенно учитывая, что backoff у тебя на весь процесс стоит
+
+            # второе - я бы все же вынес объект состояния на уровень корневой функции run_etl_process
+            # и менял бы его через методы
+            # т.к. так явно видно, где в логике etl происходит смена состояния
+            # и не нужно искать вызов смены состояния где-то в логике работы с внешними системами
+
         )
 
         loader = ElasticsearchLoader(
@@ -50,6 +67,10 @@ def run_etl_process():
 
                 loader.load_data(documents=collected_movies_data)
 
+                # здорово, что продумано удаление, но по мне все-таки в классе,
+                # работающем с приемником не стоит держать логику,
+                # работающую с источником
+                # как вариант - сделать явную передачу данных на удаление между классами
                 loader.delete_outdated_data(source_data_provider=pg_conn)
 
             LOGGER.info(
@@ -64,6 +85,9 @@ def run_etl_process():
 if __name__ == '__main__':
     LOGGER.debug('%s', 'start etl process')
 
+# переменные с настройками я бы вынес в отдельные объекты
+# которые потом как-то явно передаются в etl-процесс
+# класть такие большие структуры в глобальные переменные, как по мне, неудобно
     dsn_postgres = {
         'dbname': os.getenv('PG_DB_NAME'),
         'user': os.getenv('PG_USER'),
