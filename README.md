@@ -1,12 +1,27 @@
-# ETL Process
+# ETL & Data warehouse
 
 The ETL process uses a Multiple Query Extractor technique to extract data from a PostgreSQL database and load it into an Elasticsearch index. The process is designed to be run as a Docker container, and can be configured using the environment variables in the `.env` file.
+
+## About
+
+The project follows a microservices architecture. The ETL **data warehouse service** service is responsible for continuously extracting, transforming and loading data from `PostgreSQL` into the `Elasticsearch` DB.
+
+Elasticsearch is used as a data warehouse by other of our services, such as the [Movies Service](https://github.com/vogelfenx/Async_API).
+
+## Core Stack
+
+- PostgreSQL
+- Elasticsearch
+
+**Services interaction scheme:**
+
+![services-integration_schema.svg](resources/services-integration-datawarehouse.svg)
 
 ## Configuration
 
 The following environment variables can be used to configure the ETL process:
 
-The log level to use for the ETL process. Valid values are DEBUG, INFO, WARNING, ERROR, and CRITICAL. The default value is INFO:
+The log level to use for the ETL process. Valid values are `DEBUG`, `INFO`, `WARNING`, `ERROR`, and `CRITICAL`. The default value is `INFO`:
 
 ```conf
 LOG_LEVEL = DEBUG
@@ -33,7 +48,7 @@ ELASTICSEARCH_PORT = 9200
 
 To run the ETL process as a Docker container, use the following command:
 
-```css
+```bash
 docker-compose up --build
 ```
 
