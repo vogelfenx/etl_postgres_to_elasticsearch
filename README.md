@@ -8,14 +8,14 @@ The project follows a microservices architecture. The ETL **data warehouse servi
 
 Elasticsearch is used as a data warehouse by other of our services, such as the [Movies Service](https://github.com/vogelfenx/Async_API).
 
+**Services interaction scheme:**
+
+![services-integration_schema.svg](resources/services-integration-datawarehouse.svg)
+
 ## Core Stack
 
 - PostgreSQL
 - Elasticsearch
-
-**Services interaction scheme:**
-
-![services-integration_schema.svg](resources/services-integration-datawarehouse.svg)
 
 ## Configuration
 
