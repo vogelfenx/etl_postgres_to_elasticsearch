@@ -44,6 +44,7 @@ class BaseExtractor:
             dict: the extracted data
         """
 
+    # прикольное решение - вынести в абстракцию :)
     def _transform_film_works_to_dataclass(self, film_works: Generator[DictRow, None, None]) -> List[Movie]:
         """
         Groups data into a list of movies.

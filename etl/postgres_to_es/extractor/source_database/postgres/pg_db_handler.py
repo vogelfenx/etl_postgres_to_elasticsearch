@@ -7,6 +7,7 @@ from psycopg2.extras import DictCursor
 from util.configuration import LOGGER
 
 
+# Хорошее решение, грамотно разгружен класс MultipleQueryExtractor
 class PostgresConnection:
     """PostgreSQL database handler."""
 
@@ -182,6 +183,7 @@ class PostgresConnection:
             if not rows:
                 return
 
+    # здорово, полезная проверка
     def _check_table_consistency(self, *, table_name: str):
         """Check if the given table exists.
 
